@@ -9,7 +9,7 @@ def eig1(A, c = None, isMax = None, isSym = None):
 #    isSym = 1;
 
 # checking if any argument was passed or not
-    if c == None or isMax == None or isSym == None: # only A argument was passed
+    if c == None or isMax == None or isSym == None: # only ONE argument was passed
         c = A.shape[0] # number of rows
         isMax = 1
         isSym = 1
@@ -74,4 +74,4 @@ def eig1(A, c = None, isMax = None, isSym = None):
     eigvec = v[:, idx1] # same c eigenvec
     eigval_full = d[idx] # all eigenval
 
-    return eigval, eigvec, eigval_full
+    return eigvec, eigval, eigval_full

@@ -1,24 +1,31 @@
+% Running ALLDA and ALLDA_semi on different datasets
+% and evaluating their performance using 1-NN classifier.
+% with different label parcentages.
+
 %% 1. Load data
-data_path = 'D:/0_Work/WSU/CS7900/Project/Rimon_Rojan_Adarsh/Rimon_Rojan_Adarsh/RUN/Data/AR.mat', 'AR';
-%data_path = 'D:/0_Work/WSU/CS7900/Project/Rimon_Rojan_Adarsh/Rimon_Rojan_Adarsh/RUN/Data/COIL20.mat', 'COIL20';
-%data_path = 'D:/0_Work/WSU/CS7900/Project/Rimon_Rojan_Adarsh/Rimon_Rojan_Adarsh/RUN/Data/MSRA25.mat', 'MSRA25';
-%data_path = 'D:/0_Work/WSU/CS7900/Project/Rimon_Rojan_Adarsh/Rimon_Rojan_Adarsh/RUN/Data/YaleB.mat', 'YaleB';
-load(data_path);  
+data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\AR.mat', 'AR';
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\COIL20.mat', 'COIL20';
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\MSRA25.mat', 'MSRA25';
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\YaleB.mat', 'YaleB';
+load(data_path);
 
 X = X';
+%fprintf('X size: %d x %d\n', size(X,1), size(X,2));
+%fprintf('Y size: %d x %d\n', size(Y,1), size(Y,2));
 n_class = length(unique(Y));
 n = size(X, 2);
 n_run = 10;
 
 %% Parameters
 pca_dim = 95;
-reduced_dim = 30;
+reduced_dim = 40;
 h1 = 2;
 h2 = 10;
 r = 2;
 alpha = 0.1;
 maxiter = 10;
 label_percents = [10, 20, 30, 40, 50];
+%label_percents = [ 20, 30, 40, 50, 60]; %For AR dataset only
 n_perc = length(label_percents);
 
 acc_allma = zeros(n_perc, n_run);        % For supervised ALLDA
@@ -37,24 +44,39 @@ for p = 1:n_perc
         [U, ~, ~] = svd(X_centered, 'econ');
         X_pca = U(:, 1:pca_dim)' * X_centered;
 
-        %% 3. Train/Test Split
+        %% 3. Balanced Train/Test Split with Percentage Labeling
         rng(run);  % for reproducibility
+
+        % Find the number of samples in each class
+        class_counts = histcounts(Y, n_class);
+        min_samples = min(class_counts);  % smallest class size
+
+        % Calculate number of labeled samples based on percentage
+        n_labeled = round(min_samples * (percent/100));
+        n_labeled = max(1, n_labeled);  % Ensure at least one labeled sample
+        n_unlabeled = min_samples - n_labeled;
+
+        % Error check for unlabeled samples
+        if n_unlabeled < 1
+            error('Not enough samples for unlabeled set with current percentage');
+        end
+
         train_idx = [];
         test_idx = [];
+
         for i = 1:n_class
             idx = find(Y == i);
-            if length(idx) < 2  % Need at least 2 samples per class
+            idx = idx(randperm(length(idx)));  % shuffle
+
+            % Take the determined number of samples
+            if length(idx) >= min_samples
+                train_idx = [train_idx, idx(1:n_labeled)];
+                test_idx = [test_idx, idx(n_labeled+1:n_labeled+n_unlabeled)];
+            else
+                % For classes smaller than min_samples (shouldn't happen due to earlier check)
+                warning('Class %d has fewer samples (%d) than min_samples (%d)', i, length(idx), min_samples);
                 continue;
             end
-            idx = idx(randperm(length(idx)));
-            n_labeled = round(length(idx) * (percent/100));
-            n_labeled = max(1, n_labeled);  % Ensure at least one labeled sample
-
-            if length(idx) - n_labeled < 1
-                continue;  % Skip this class if not enough for test
-            end
-            train_idx = [train_idx, idx(1:n_labeled)];
-            test_idx = [test_idx, idx(n_labeled+1:end)];
         end
 
         X_train = X_pca(:, train_idx);

@@ -49,6 +49,7 @@ def ALLDA(X, Y, d, h, r, perr):
     H = np.eye(n) - (1 / n * np.ones((n, n)))
     St = X @ H @ X.T
     invSt = np.linalg.inv(St)
+    #invSt = np.linalg.pinv(St)
     pre_S = None
     Obj = 0
     OBJ = []
@@ -64,17 +65,17 @@ def ALLDA(X, Y, d, h, r, perr):
 #    S0{k} = construct_S0( idx, h, ni);   
 #    pre_S = blkdiag(pre_S,S0{k});      %    
 #end
-
+    S0 = {}
     for k in range(len(c)):
         Xi = Xc[k]
         ni = nc[k]
         distXi = l2_distance_1(Xi, Xi)
         idx = np.argsort(distXi, axis=1)
-        S0_k = construct_S0(idx, h, ni)
+        S0[k] = construct_S0(idx, h, ni)
         if pre_S is None:
-            pre_S = S0_k
+            pre_S = S0[k]
         else:
-            pre_S = block_diag((pre_S, S0_k)).toarray()
+            pre_S = block_diag((pre_S, S0[k])).toarray()
 
 #% Pre_S is the initial graph
 #
@@ -129,12 +130,11 @@ def ALLDA(X, Y, d, h, r, perr):
         Sw = X @ L_w @ X.T
         Sw = (Sw + Sw.T) / 2
         P = invSt @ Sw
-        W = eig1(P, c=d, isMax=0, isSym=1)[1]
-        diag_vals = np.diag(W.T @ St @ W).copy()  # Make a writable copy
-        diag_vals[diag_vals == 0] = np.finfo(float).eps  
-        W = W @ np.diag(1 / np.sqrt(diag_vals))
+        W = eig1(P, c=d, isMax=1, isSym=1)[0]
+        W = W @ np.diag(1 / np.sqrt(np.diag(W.T @ St @ W)))
 
-        obj = []
+        obj = np.zeros(len(c))
+        S ={}
         for i in range(len(c)):
             Xc[i] = X[:, Y == c[i]]
             nc[i] = Xc[i].shape[1]
@@ -143,19 +143,18 @@ def ALLDA(X, Y, d, h, r, perr):
             distXi = l2_distance_1(W.T @ Xi, W.T @ Xi)
             dis = np.sort(distXi, axis=1)
             idx = np.argsort(distXi, axis=1)
-            obj_i = np.sum(np.sum(dis[:, 1:h + 1] ** (1 / (1 - r)), axis=1) ** (1 - r))
-            obj.append(obj_i)
-            S_i = construct_S(dis + np.finfo(float).eps, idx, h, r, ni)
+            obj[i] = np.sum(np.sum(dis[:, 1:h + 1] ** (1 / (1 - r)), axis=1) ** (1 - r))
+            S[i] = construct_S(dis + np.finfo(float).eps, idx, h, r, ni)
             if S1 is None:
-                S1 = S_i
+                S1 = S[i]
             else:
-                S1 = block_diag((S1, S_i)).toarray()
+                S1 = block_diag((S1, S[i])).toarray()
 
         pre_S = S1
         pre_S = pre_S ** r
         pre_S = (pre_S + pre_S.T) / 2
-        interval = Obj - sum(obj)
-        OBJ.append(sum(obj))
+        interval = Obj - np.sum(obj)
+        OBJ.append(np.sum(obj))
         count += 1
         Obj = sum(obj)
 

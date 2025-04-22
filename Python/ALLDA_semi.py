@@ -1,10 +1,11 @@
 import numpy as np
-from scipy.linalg import block_diag
+from scipy.sparse import spdiags, block_diag
 from construct_S import construct_S
 from construct_S2 import construct_S2
 from construct_S4 import construct_S4
 from eig1 import eig1
 from L2_distance_1 import l2_distance_1
+
 #function [W,p,S,Obj]  = ALLDA_semi( LX,Y,X,h1,h2,m,alpha,maxiter)
 def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #% LX: labeled data, every column is a sample
@@ -24,12 +25,12 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #l = length(Y);    % l denotes the number of labeled samples
 #p0 = [];
 #
-
+    
     # load
     _, n = X.shape
     c = np.unique(Y)
     l = len(Y)
-    p0 = []
+    p0 = None
 
 #%% initialization
 #for i=1:length(c)
@@ -46,12 +47,14 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 
 #H = eye(l) - 1/l*ones(l);
 #% H = eye(80) - 1/80*ones(80);
-#St = LX'*H*LX;  % St of labeled data
+#St = LX*H*LX';  % St of labeled data
 #invSt = inv(St);
-
+    #print(f"LX shape: {LX.shape}")
+    #print(f"Y shape: {Y.shape}")
     H = np.eye(l) - (1 / l * np.ones((l, l)))
-    St = LX.T @ H @ LX
+    St = LX @ H @ LX .T
     invSt = np.linalg.inv(St)
+    #invSt = np.linalg.pinv(St)
 
 
 #% initialized P similarity matrix of labeled data
@@ -65,14 +68,17 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #end
 
     S0 = {}
-    start_idx = 0
-    for k in c:
+    p0 = None
+    for k in range(len(c)):
         Xi = Xc[k]
         ni = nc[k]
         distXi = l2_distance_1(Xi, Xi)
         idx = np.argsort(distXi, axis=1)
         S0[k] = construct_S2(idx, h1, ni)
-        p0.append((p0,S0[k]))
+        if p0 is None:
+            p0 = S0[k]
+        else:
+            p0 = block_diag((p0, S0[k])).toarray()
 
 #obj1 = zeros(1,length(c));
 #Obj = zeros(1,maxiter);
@@ -125,9 +131,9 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 
         G = invSt @ (LX @ L_p @ LX.T + alpha * X @ L_s @ X.T)
         # Ensure G is symmetric
-        G = (G + G.T) / 2
-        eigvals, W, _ = eig1(G, m, isMax=0, isSym=0)
-        W = W @ np.diag(1. / np.sqrt(np.diag(W.T @ St @ W)))
+        #G = (G + G.T) / 2
+        W, _, _ = eig1(G, m, isMax=1, isSym=1)
+        W = W @ np.diag(1 / np.sqrt(np.diag(W.T @ St @ W)))
 
 #% Updata matrix P
 # for i = 1:length(c)
@@ -142,7 +148,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 # obj1(i) = sum(sum(PP{i}.*distLXx));
 #% obj2(i) = sum((sum (dis(:,2:h+1).^(1/(1-2)),2) ).^(1-2));
         p = None
-        PP = []
+        PP = {}
         for i in range(len(c)):
             Xc[i] = LX[:, Y == i]
             nc[i] = Xc[i].shape[1]
@@ -150,9 +156,12 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
             ni = nc[i]
             distLXx = l2_distance_1(W.T @ Xi, W.T @ Xi)
             idx = np.argsort(distLXx, axis=1)
-            PP = construct_S2(idx, h1, ni)
-            p = block_diag(p, PP)
-            obj1[i] = np.sum(PP * distLXx)
+            PP[i] = construct_S2(idx, h1, ni)
+            if p is None:
+                p = PP[i]
+            else:
+                p = block_diag((p, PP[i])).toarray()
+            obj1[i] = np.sum(PP[i] * distLXx)
 
 # end
 #Obj1 = sum(obj1); 

@@ -1,7 +1,13 @@
+% Running ALLDA and ALLDA_semi on different datasets
+% and evaluating their performance using 1-NN classifier.
+
 
 %% 1. Load data
-data_path = 'D:/0_Work/WSU/CS7900/Project/Rimon_Rojan_Adarsh/Rimon_Rojan_Adarsh/RUN/Data/AR.mat', 'AR';
-load(data_path);  % assumes variables 'fea' and 'gnd'
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\AR.mat', 'AR';
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\COIL20.mat', 'COIL20';
+data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\MSRA25.mat', 'MSRA25';
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\YaleB.mat', 'YaleB';
+load(data_path);  
 
 X = X';
 %fprintf('X size: %d x %d\n', size(X,1), size(X,2));
@@ -32,19 +38,28 @@ for run = 1:n_run
     X_pca = U(:, 1:pca_dim)' * X_centered;
     
     %% 3. 50/50 train test split
-    rng(run);  % for reproducibility
+    rng(run);  % for reproducibility seed = numofrun
+
+    % Find the number of samples in each class
+    class_counts = histcounts(Y, n_class);
+    min_samples = min(class_counts);  % smallest class size
+    %fprintf('Min sample: %d \n', min_samples);
+
+    % Determine how many samples to take from each class for train/test
+    train_per_class = floor(min_samples/2);
+    test_per_class = min_samples - train_per_class;
+
     train_idx = [];
     test_idx = [];
     for i = 1:n_class
         idx = find(Y == i);
         idx = idx(randperm(length(idx)));
-        split = floor(length(idx)/2);
-        if split == 0 || split >= length(idx)
-            continue;  
-        end
-        train_idx = [train_idx, idx(1:split)];
-        test_idx = [test_idx, idx(split+1:end)];
+
+        % Take the determined number of samples
+        train_idx = [train_idx, idx(1:train_per_class)];
+        test_idx = [test_idx, idx(train_per_class+1:train_per_class+test_per_class)];
     end
+    
     
     X_train = X_pca(:, train_idx);
     Y_train = Y(train_idx(:));
