@@ -3,10 +3,12 @@
 % with different label parcentages.
 
 %% 1. Load data
-data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\AR.mat', 'AR';
+%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\AR.mat', 'AR';
 %data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\COIL20.mat', 'COIL20';
 %data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\MSRA25.mat', 'MSRA25';
-%data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\YaleB.mat', 'YaleB';
+data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\YaleB.mat', 'YaleB';
+
+
 load(data_path);
 
 X = X';
@@ -14,7 +16,7 @@ X = X';
 %fprintf('Y size: %d x %d\n', size(Y,1), size(Y,2));
 n_class = length(unique(Y));
 n = size(X, 2);
-n_run = 10;
+n_run = 9;
 
 %% Parameters
 pca_dim = 95;
@@ -24,8 +26,8 @@ h2 = 10;
 r = 2;
 alpha = 0.1;
 maxiter = 10;
-label_percents = [10, 20, 30, 40, 50];
-%label_percents = [ 20, 30, 40, 50, 60]; %For AR dataset only
+%label_percents = [10, 20, 30, 40, 50];
+label_percents = [ 20, 30, 40, 50, 60]; %For AR dataset only
 n_perc = length(label_percents);
 
 acc_allma = zeros(n_perc, n_run);        % For supervised ALLDA

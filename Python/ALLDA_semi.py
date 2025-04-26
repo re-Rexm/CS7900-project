@@ -51,9 +51,11 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #invSt = inv(St);
     #print(f"LX shape: {LX.shape}")
     #print(f"Y shape: {Y.shape}")
-    H = np.eye(l) - (1 / l * np.ones((l, l)))
-    St = LX @ H @ LX .T
-    invSt = np.linalg.inv(St)
+
+    # Compute total scatter matrix St and its inverse for whitening constraint
+    H = np.eye(l) - (1 / l * np.ones((l, l))) # Centering matrix
+    St = LX @ H @ LX .T # Total scatter matrix of labeled data
+    invSt = np.linalg.inv(St) # Inverse of St (for whitening constraint)
     #invSt = np.linalg.pinv(St)
 
 
@@ -67,6 +69,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #    p0 = blkdiag(p0,S0{k});         
 #end
 
+    # Initialize similarity matrix P for labeled data
     S0 = {}
     p0 = None
     for k in range(len(c)):
@@ -78,11 +81,13 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
         if p0 is None:
             p0 = S0[k]
         else:
-            p0 = block_diag((p0, S0[k])).toarray()
+            p0 = block_diag((p0, S0[k])).toarray() # Block diagonal matrix for all classes
+
 
 #obj1 = zeros(1,length(c));
 #Obj = zeros(1,maxiter);
 
+    # Initialize objective function tracking
     obj1 = np.zeros(len(c))
     Obj = np.zeros(maxiter)
 
@@ -91,6 +96,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #[~, idx] = sort(distXX,2);
 #S0 = construct_S4(idx,h2,n);
 
+    # Initialize similarity matrix S for all data
     distXX = l2_distance_1(X, X)
     idx = np.argsort(distXX, axis=1)
     S0 = construct_S4(idx, h2, n)
@@ -101,6 +107,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #P = p0;
 #S = S0.^2;
 
+    # Main optimization loop
     for iter in range(maxiter):
         p = []
         P = p0
@@ -110,16 +117,18 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #P = (P+P')/2;
 #D_p = diag(sum(P));
 #L_p = D_p - P;
-
-        P = (P + P.T) / 2
+        
+        # Construct Laplacian matrix L_p for labeled data
+        P = (P + P.T) / 2 # Symmetrize similarity matrix
         D_p = np.diag(np.sum(P, axis=1))
-        L_p = D_p - P
+        L_p = D_p - P # Graph Laplacian
 
 #% Calculate lapalcian matrix L_s;
 #S = (S+S')/2;
 #D_s = diag(sum(S));
 #L_s = D_s - S;
 
+        # Construct Laplacian matrix L_s for all data
         S = (S + S.T) / 2
         D_s = np.diag(np.sum(S, axis=1))
         L_s = D_s - S
@@ -129,6 +138,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #[W,~,~] = eig1(G, m, 0, 0);
 #W = W*diag(1./sqrt(diag(W'*St*W)));
 
+        # Update projection matrix W
         G = invSt @ (LX @ L_p @ LX.T + alpha * X @ L_s @ X.T)
         # Ensure G is symmetric
         #G = (G + G.T) / 2
@@ -147,6 +157,8 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 # p = blkdiag(p,PP{i});
 # obj1(i) = sum(sum(PP{i}.*distLXx));
 #% obj2(i) = sum((sum (dis(:,2:h+1).^(1/(1-2)),2) ).^(1-2));
+
+        # Update similarity matrix P for labeled data
         p = None
         PP = {}
         for i in range(len(c)):
@@ -174,6 +186,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #S =  construct_S(disX + eps, idxX, h2, 2, n);
 #Obj2 = alpha*sum(sum(distXx.*(S.^2)));
 
+        # Update similarity matrix S for all data
         distXx = l2_distance_1(W.T @ X, W.T @ X)
         disX = np.sort(distXx, axis=1)
         idxX = np.argsort(distXx, axis=1)

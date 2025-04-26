@@ -26,12 +26,14 @@ def ALLDA(X, Y, d, h, r, perr):
 #    WW_w(ind,ind) = length(ind)/n;
 #end
 
+    # Initialize variables
     c = np.unique(Y)
     n = len(Y)
     Xc = {}
     nc = []
     WW_w = np.zeros((n, n))
 
+    # Separate data by class and initialize weight matrix
     for i, ci in enumerate(c):
         Xc[i] = X[:, Y == ci]  # Store each class samples
         nc.append(Xc[i].shape[1])  # Record the number of each class
@@ -46,10 +48,13 @@ def ALLDA(X, Y, d, h, r, perr):
 #OBJ = [];
 #interval = 1;
 
-    H = np.eye(n) - (1 / n * np.ones((n, n)))
-    St = X @ H @ X.T
+    # Compute total scatter matrix and its inverse (for whitening constraint)
+    H = np.eye(n) - (1 / n * np.ones((n, n))) # Centering matrix
+    St = X @ H @ X.T # Total scatter matrix
     invSt = np.linalg.inv(St)
     #invSt = np.linalg.pinv(St)
+    
+    # Initialize variables for optimization
     pre_S = None
     Obj = 0
     OBJ = []
@@ -65,6 +70,8 @@ def ALLDA(X, Y, d, h, r, perr):
 #    S0{k} = construct_S0( idx, h, ni);   
 #    pre_S = blkdiag(pre_S,S0{k});      %    
 #end
+
+    #  kNN graph construction
     S0 = {}
     for k in range(len(c)):
         Xi = Xc[k]
@@ -75,13 +82,13 @@ def ALLDA(X, Y, d, h, r, perr):
         if pre_S is None:
             pre_S = S0[k]
         else:
-            pre_S = block_diag((pre_S, S0[k])).toarray()
+            pre_S = block_diag((pre_S, S0[k])).toarray() # Block diagonal for all classes
 
 #% Pre_S is the initial graph
 #
 #pre_S = pre_S - diag(diag(pre_S));
 #WW_w = WW_w - diag(diag(WW_w));
-
+    
     pre_S = pre_S - np.diag(np.diag(pre_S))
     WW_w = WW_w - np.diag(np.diag(WW_w))
 
@@ -121,18 +128,20 @@ def ALLDA(X, Y, d, h, r, perr):
 #    Obj =  sum(obj);
 #end 
 
+    # Main optimization loop
     count = 0
     while abs(interval) >= perr and count < 200:
         S1 = None
-        D_w = spdiags(np.sum(WW_w * (pre_S), axis=r-1), 0, n, n).toarray()
-        L_w = D_w - WW_w * (pre_S)
-        L_w = (L_w + L_w.T) / 2
+        D_w = spdiags(np.sum(WW_w * (pre_S), axis=r-1), 0, n, n).toarray() # Degree matrix
+        L_w = D_w - WW_w * (pre_S) # Laplacian matrix
+        L_w = (L_w + L_w.T) / 2 # Ensure symmetry
+        # Compute within-class scatter matrix
         Sw = X @ L_w @ X.T
         Sw = (Sw + Sw.T) / 2
         P = invSt @ Sw
-        W = eig1(P, c=d, isMax=1, isSym=1)[0]
-        W = W @ np.diag(1 / np.sqrt(np.diag(W.T @ St @ W)))
-
+        W = eig1(P, c=d, isMax=1, isSym=1)[0] # Get top d eigenvectors
+        W = W @ np.diag(1 / np.sqrt(np.diag(W.T @ St @ W))) # Apply whitening constraint
+        # Update similarity matrix S 
         obj = np.zeros(len(c))
         S ={}
         for i in range(len(c)):
@@ -140,6 +149,7 @@ def ALLDA(X, Y, d, h, r, perr):
             nc[i] = Xc[i].shape[1]
             Xi = Xc[i]
             ni = nc[i]
+            # Compute distances in projected space
             distXi = l2_distance_1(W.T @ Xi, W.T @ Xi)
             dis = np.sort(distXi, axis=1)
             idx = np.argsort(distXi, axis=1)
