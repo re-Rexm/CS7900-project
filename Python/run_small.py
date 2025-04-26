@@ -4,6 +4,7 @@ from sklearn.neighbors import KNeighborsClassifier
 import scipy.io as sio
 from ALLDA import ALLDA
 from ALLDA_semi import ALLDA_semi
+from scipy.io import savemat
 
 # Load COIL20 dataset
 #data_path = r"D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\AR.mat"
@@ -70,12 +71,56 @@ print(f"W_semi first 3x3 values:\n{W_semi[:3,:3]}")
 print(f"Z_train_semi shape: {Z_train_semi.shape}")
 print(f"Z_train_semi first 3x3 values:\n{Z_train_semi[:3,:3]}")
 
-# Save results for MATLAB comparison 
-from scipy.io import savemat
-savemat('coil20_results.mat', {
+matrices_to_save = {
+    'X': X,
+    'Y': Y,
+    'meanX': meanX,
+    'X_centered': X_centered,
+    'U': U[:, :pca_dim],  # Save only used columns
     'X_pca': X_pca,
     'W_allma': W_allma,
+    'S1': S1,
     'Z_train_allma': Z_train_allma,
     'W_semi': W_semi,
-    'Z_train_semi': Z_train_semi
-})
+    'p': p,
+    'S': S,
+    'Z_train_semi': Z_train_semi,
+    'OBJ_allda': OBJ,
+    'Obj_semi': Obj
+}
+
+# Add comparison printing function
+def print_matrix_info(name, matrix, num_elements=3):
+    print(f"\n=== Matrix: {name} ===")
+    print(f"Shape: {matrix.shape}")
+    if isinstance(matrix, np.ndarray):
+        print(f"First {num_elements} elements: ", end='')
+        if matrix.size >= num_elements:
+            print([f"{x:.6f}" for x in matrix.flatten()[:num_elements]])
+        else:
+            print([f"{x:.6f}" for x in matrix.flatten()])
+        print(f"Min value: {np.min(matrix):.6f}")
+        print(f"Max value: {np.max(matrix):.6f}")
+        print(f"Mean value: {np.mean(matrix):.6f}")
+    else:
+        print(f"Type: {type(matrix)}")
+
+# Save results and print detailed information
+savemat('coil20_results.mat', matrices_to_save)
+
+print("\nDetailed Matrix Information:")
+print("=" * 50)
+
+# Print information for key matrices
+for name, matrix in matrices_to_save.items():
+    if isinstance(matrix, np.ndarray):
+        print_matrix_info(name, matrix)
+    elif isinstance(matrix, dict):
+        print(f"\n=== Dictionary: {name} ===")
+        for k, v in matrix.items():
+            if isinstance(v, np.ndarray):
+                print_matrix_info(f"{name}.{k}", v)
+    else:
+        print(f"\n{name}: {type(matrix)}")
+
+print("\nNote: These values can be compared with MATLAB output for verification.")

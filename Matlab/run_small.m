@@ -7,8 +7,8 @@ data_path = 'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\
 
 load(data_path);
 
-% Take only first 5 classes, 10 samples per class
-X = X';
+% Convert X to double explicitly after loading
+X = double(X');
 Y = Y(:);
 mask = Y <= 5;  % First 5 classes
 X = X(:, mask);
@@ -70,11 +70,82 @@ fprintf('Z_train_semi first 3x3 values:\n');
 disp(Z_train_semi(1:3,1:3));
 
 
-% Load Python results for comparison 
+% Load Python results for comparison
 py_results = load('coil20_results.mat');
-fprintf('\nComparison with Python results:\n');
-fprintf('X_pca max difference: %.10f\n', max(abs(X_pca(:) - py_results.X_pca(:))));
-fprintf('W_allma max difference: %.10f\n', max(abs(W_allma(:) - py_results.W_allma(:))));
-fprintf('Z_train_allma max difference: %.10f\n', max(abs(Z_train_allma(:) - py_results.Z_train_allma(:))));
-fprintf('W_semi max difference: %.10f\n', max(abs(W_semi(:) - py_results.W_semi(:))));
-fprintf('Z_train_semi max difference: %.10f\n', max(abs(Z_train_semi(:) - py_results.Z_train_semi(:))));
+
+% Enhanced comparison function
+function compare_matrices(name, mat1, mat2, num_elements)
+    if nargin < 4
+        num_elements = 3;  % Default to showing first 3 elements
+    end
+    
+    % Convert inputs to double to ensure compatibility
+    mat1 = double(mat1);
+    mat2 = double(mat2);
+    
+    fprintf('\n=== Comparing %s ===\n', name);
+    fprintf('Shape: MATLAB %dx%d, Python %dx%d\n', size(mat1), size(mat2));
+    
+    % Show first few elements of both matrices
+    fprintf('First %d elements:\n', num_elements);
+    fprintf('MATLAB: ');
+    fprintf('%.6f ', mat1(1:min(num_elements, numel(mat1))));
+    fprintf('\nPython: ');
+    fprintf('%.6f ', mat2(1:min(num_elements, numel(mat2))));
+    fprintf('\n');
+    
+    % Calculate differences
+    if isequal(size(mat1), size(mat2))
+        abs_diff = abs(mat1 - mat2);
+        max_diff = max(abs_diff(:));
+        mean_diff = mean(abs_diff(:));
+        fprintf('Max difference: %.10f\n', max_diff);
+        fprintf('Mean difference: %.10f\n', mean_diff);
+        
+        % Show location and values of maximum difference
+        [max_row, max_col] = find(abs_diff == max_diff, 1);
+        if ~isempty(max_row)
+            fprintf('Max difference location: [%d, %d]\n', max_row, max_col);
+            fprintf('MATLAB value: %.10f\n', mat1(max_row, max_col));
+            fprintf('Python value: %.10f\n', mat2(max_row, max_col));
+        end
+    else
+        fprintf('ERROR: Matrix sizes do not match!\n');
+    end
+end
+
+% Load Python results and perform detailed comparisons
+py_results = load('coil20_results.mat');
+
+% Compare initial data
+compare_matrices('Input X', X, py_results.X);
+compare_matrices('Input Y', Y, py_results.Y);
+
+% Compare PCA steps
+compare_matrices('meanX', meanX, py_results.meanX);
+compare_matrices('X_centered', X_centered, py_results.X_centered);
+compare_matrices('U (PCA components)', U(:,1:pca_dim), py_results.U);
+compare_matrices('X_pca', X_pca, py_results.X_pca);
+
+% Compare ALLDA results
+compare_matrices('W_allma', W_allma, py_results.W_allma);
+compare_matrices('S1', S1, py_results.S1);
+compare_matrices('Z_train_allma', Z_train_allma, py_results.Z_train_allma);
+compare_matrices('OBJ', OBJ, py_results.OBJ_allda);
+
+% Compare ALLDA_semi results
+compare_matrices('W_semi', W_semi, py_results.W_semi);
+compare_matrices('S', S, py_results.S);
+compare_matrices('Z_train_semi', Z_train_semi, py_results.Z_train_semi);
+compare_matrices('Obj', Obj, py_results.Obj_semi);
+
+% If p struct comparison is needed
+if isstruct(p) && isfield(py_results, 'p') && isstruct(py_results.p)
+    p_fields = fieldnames(p);
+    for i = 1:length(p_fields)
+        field = p_fields{i};
+        if isfield(py_results.p, field)
+            compare_matrices(['p.' field], p.(field), py_results.p.(field));
+        end
+    end
+end
