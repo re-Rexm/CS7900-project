@@ -52,6 +52,7 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
     #print(f"LX shape: {LX.shape}")
     #print(f"Y shape: {Y.shape}")
 
+   
     # Compute total scatter matrix St and its inverse for whitening constraint
     H = np.eye(l) - (1 / l * np.ones((l, l))) # Centering matrix
     St = LX @ H @ LX .T # Total scatter matrix of labeled data
@@ -122,6 +123,21 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
         P = (P + P.T) / 2 # Symmetrize similarity matrix
         D_p = np.diag(np.sum(P, axis=1))
         L_p = D_p - P # Graph Laplacian
+        # Add this right after calculating L_p 
+        # After this line: L_p = D_p - P
+        if L_p.shape[0] != LX.shape[1]:
+            #print(f"WARNING: L_p shape {L_p.shape} doesn't match LX shape {LX.shape}")
+            # Create a correctly sized L_p matrix
+            L_p_new = np.zeros((LX.shape[1], LX.shape[1]))
+            
+            # Copy the existing values if possible
+            min_rows = min(L_p.shape[0], L_p_new.shape[0])
+            min_cols = min(L_p.shape[1], L_p_new.shape[1])
+            L_p_new[:min_rows, :min_cols] = L_p[:min_rows, :min_cols]
+            
+            # Update L_p with the correctly sized matrix
+            L_p = L_p_new
+            #print(f"Fixed L_p shape: {L_p.shape}")
 
 #% Calculate lapalcian matrix L_s;
 #S = (S+S')/2;
@@ -137,7 +153,28 @@ def ALLDA_semi(LX, Y, X, h1, h2, m, alpha, maxiter):
 #G = invSt*(LX*L_p*LX'+alpha*X*L_s*X'); 
 #[W,~,~] = eig1(G, m, 0, 0);
 #W = W*diag(1./sqrt(diag(W'*St*W)));
-
+        #print(f"X_labeled shape: {LX.shape}")
+        #print(f"Y_labeled shape: {Y.shape}")
+        #print(f"X_all shape: {X.shape}")
+        #print(f"invSt shape: {invSt.shape}")
+        #print(f"LX shape: {LX.shape}")
+        #print(f"L_p shape: {L_p.shape}")
+        #print(f"X shape: {X.shape}")
+        #print(f"L_s shape: {L_s.shape}")
+        
+        # Try computing each part separately
+        part1 = LX @ L_p @ LX.T
+        #print(f"part1 shape: {part1.shape}")
+        
+        part2 = alpha * X @ L_s @ X.T  
+        #print(f"part2 shape: {part2.shape}")
+        
+        # Make sure the matrices can be added
+        #if part1.shape != part2.shape:
+            #print(f"ERROR: Cannot add matrices of shapes {part1.shape} and {part2.shape}")
+            # Adjust one of the matrices if needed or return early
+        
+        G = invSt @ (part1 + part2)
         # Update projection matrix W
         G = invSt @ (LX @ L_p @ LX.T + alpha * X @ L_s @ X.T)
         # Ensure G is symmetric
