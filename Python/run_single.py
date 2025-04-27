@@ -57,7 +57,7 @@ def main():
     #data_path = r'D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\MSRA25.mat'
     #data_path = r"D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\YaleB.mat"
 
-    #data_path = r"D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\YaleB.mat"
+    data_path = r"D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\Yale.mat"
 
     #data_path = r"D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\colon.mat"
     #data_path = r"D:\0_Work\WSU\CS7900\Project\Rimon_Rojan_Adarsh\Rimon_Rojan_Adarsh\RUN\CS7900-project\Data\lung_discrete.mat"
@@ -69,14 +69,15 @@ def main():
     X = data['X'].T
     Y = data['Y'].flatten().astype(int) - 1
     
-    # Parameters
-    n_run = 9
-    pca_dim = 95
-    reduced_dim = 40
-    h1, h2 = 2, 10
+     # Parameters
+    n_run = 8
+    pca_dim = 95   #colon =3, lung = 10, prostate = 11, Yale20, else 95
+    reduced_dim =40   #colon =3 , lung = 10, prostate = 10, , Yale 20, else 40
+    h1, h2 = 2, 10     #colon = 4, 10 , lung = 2, 15, prostate = 3, 20, Ylae 4,20, else 2,10
     r = 2
     alpha = 0.1
     maxiter = 10
+    
     
     # Parallel execution of runs
     results = Parallel(n_jobs=n_jobs)(
